@@ -51,6 +51,7 @@
     NSMutableArray *menuItemRectsInRootViewArray;
     
     UIView *shadowView;
+    UIView *containerView;
     
     UIView *currentlyHighlightedMenuItem;
     UIView *startCircleView;
@@ -89,8 +90,6 @@
 
 @property (nonatomic, weak) id <BAMContextualMenuDelegate> delegate;
 @property (nonatomic, weak) id <BAMContextualMenuDataSource> dataSource;
-@property (nonatomic, weak) UIView *containerView;
-
 
 @end
 
@@ -112,14 +111,21 @@
         shouldRelayoutSubviews = YES;
         menuItemIsAnimating = NO;
         
-        self.containerView = containingView;
-        self.containerView.userInteractionEnabled = YES;
+        containerView = containingView;
+        containerView.userInteractionEnabled = YES;
         
         biggestMenuItemWidthHeight = circleViewWidthHeight;
         angleOffset = 0.0;
         currentlyHighlightedMenuItemIndex = NSNotFound;
         
-        rootView = [[[[[UIApplication sharedApplication] delegate] window] rootViewController] view];
+        
+        UIViewController* rootController = [[[[UIApplication sharedApplication] delegate] window] rootViewController];
+        while (rootController.presentedViewController != nil) {
+            rootController = rootController.presentedViewController;
+        }
+        rootView = [rootController view];
+        
+        
         
         shadowView = [[UIView alloc] initWithFrame:rootView.bounds];
         shadowView.backgroundColor = [UIColor colorWithWhite:0.0f alpha:0.4f];
@@ -176,11 +182,11 @@
     _activateOption = activateOption;
     
     if (longPressActivationGestureRecognizer) {
-        [self.containerView removeGestureRecognizer:longPressActivationGestureRecognizer];
+        [containerView removeGestureRecognizer:longPressActivationGestureRecognizer];
         longPressActivationGestureRecognizer = nil;
     }
     if (tapGestureRecognizer) {
-        [self.containerView removeGestureRecognizer:tapGestureRecognizer];
+        [containerView removeGestureRecognizer:tapGestureRecognizer];
         tapGestureRecognizer = nil;
     }
     if (shadowGestureRecognizer) {
@@ -192,7 +198,7 @@
         case kBAMContextualMenuActivateOptionLongPress: {
             longPressActivationGestureRecognizer = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPressActivated:)];
             longPressActivationGestureRecognizer.delegate = self;
-            [self.containerView addGestureRecognizer:longPressActivationGestureRecognizer];
+            [containerView addGestureRecognizer:longPressActivationGestureRecognizer];
             
             startCircleView.hidden = NO;
             break;
@@ -200,7 +206,7 @@
         case kBAMContextualMenuActivateOptionTouchUp: {
             tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapActivated:)];
             tapGestureRecognizer.delegate = self;
-            [self.containerView addGestureRecognizer:tapGestureRecognizer];
+            [containerView addGestureRecognizer:tapGestureRecognizer];
             
             shadowGestureRecognizer = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(shadowViewGestureActivated:)];
             shadowGestureRecognizer.minimumPressDuration = 0.0001;
@@ -339,10 +345,10 @@
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
 {
     if (self.activateOption == kBAMContextualMenuActivateOptionTouchUp) {
-        CGRect viewRect = self.containerView.frame;
+        CGRect viewRect = containerView.frame;
         
         CGPoint touchLocation = point;
-        CGPoint gestureLocationInRootView = [self.containerView convertPoint:point toView:rootView];
+        CGPoint gestureLocationInRootView = [containerView convertPoint:point toView:rootView];
         
         startingLocation = CGPointMake((gestureLocationInRootView.x - touchLocation.x) + (viewRect.size.width / 2.0), (gestureLocationInRootView.y - touchLocation.y) + (viewRect.size.height / 2.0));
     }
@@ -715,7 +721,7 @@
                 highlightedMenuItem = menuItem;
             }
             
-            UIView *titleView;
+            UIView *titleView = nil;
             
             if ([self.delegate respondsToSelector:@selector(contextualMenu:titleViewForMenuItemAtIndex:)]) {
                 titleView = [self.delegate contextualMenu:self titleViewForMenuItemAtIndex:index];
@@ -753,7 +759,7 @@
                 }
                 
                 titleView = titleLabel;
-            } else {
+            } else if(titleView == nil) {
                 titleView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, biggestMenuItemWidthHeight, 1.0)];
                 titleView.backgroundColor = [UIColor clearColor];
             }
@@ -965,19 +971,12 @@ typedef enum ZZScreenEdge : NSUInteger {
     return angles;
 }
 
-- (BOOL)sdkNeedsRotationOffsett
-{
-    BOOL isCompiledWithPreIOS8SDK = NSFoundationVersionNumber <= 1048.0;
-    return ([[[UIDevice currentDevice] systemVersion] floatValue] < 8.0 || isCompiledWithPreIOS8SDK);
-}
-
 - (CGFloat)rotationAngleOffset
 {
     //Anything not on Portrait Orientation needs an additional offset due to strange behaviors with iPad rotation.
-    if ([self sdkNeedsRotationOffsett] && UIInterfaceOrientationIsLandscape([[UIApplication sharedApplication] statusBarOrientation])) {
+    if (UIInterfaceOrientationIsLandscape([[UIApplication sharedApplication] statusBarOrientation])) {
         return 180.0;
-    }    
-    
+    }
     return 0.0;
 }
 
@@ -994,10 +993,10 @@ typedef enum ZZScreenEdge : NSUInteger {
 - (void)dealloc
 {
     if (longPressActivationGestureRecognizer) {
-        [self.containerView removeGestureRecognizer:longPressActivationGestureRecognizer];
+        [containerView removeGestureRecognizer:longPressActivationGestureRecognizer];
     }
     if (tapGestureRecognizer) {
-        [self.containerView removeGestureRecognizer:tapGestureRecognizer];
+        [containerView removeGestureRecognizer:tapGestureRecognizer];
     }
     if (shadowGestureRecognizer) {
         [shadowView removeGestureRecognizer:shadowGestureRecognizer];

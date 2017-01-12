@@ -26,8 +26,8 @@
 #import <UIKit/UIKit.h>
 
 typedef enum HMContextualMenuActivateOption : NSUInteger {
-	kBAMContextualMenuActivateOptionLongPress = 0,
-	kBAMContextualMenuActivateOptionTouchUp = 1,
+    kBAMContextualMenuActivateOptionLongPress = 0,
+    kBAMContextualMenuActivateOptionTouchUp = 1,
 } BAMContextualMenuActivateOption;
 
 @protocol BAMContextualMenuDelegate, BAMContextualMenuDataSource;
